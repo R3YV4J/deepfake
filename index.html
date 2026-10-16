@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>¿Real o deepfake?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light;
+  --bg:#E4E9EF; --surface:#F7F9FB; --ink:#142030; --muted:#4F6075; --line:#BFCAD7;
+  --real:#0B7A66; --real-bg:#D5F0E9;
+  --fake:#C81E6A; --fake-bg:#FADCE9;
+  --cyan:#14A3D6; --focus:#1B5CFF; --ok:#0B7A66; --bad:#C81E6A;
+  --font-display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;
+  --font-body:"Instrument Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0F1722; --surface:#182231; --ink:#E8EDF4; --muted:#9AAABD; --line:#2C3B50;
+    --real:#3DD6B5; --real-bg:#12342E;
+    --fake:#FF5C9A; --fake-bg:#3B1627;
+    --cyan:#4CC9F5; --focus:#7AA2FF; --ok:#3DD6B5; --bad:#FF5C9A;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0F1722; --surface:#182231; --ink:#E8EDF4; --muted:#9AAABD; --line:#2C3B50;
+  --real:#3DD6B5; --real-bg:#12342E;
+  --fake:#FF5C9A; --fake-bg:#3B1627;
+  --cyan:#4CC9F5; --focus:#7AA2FF; --ok:#3DD6B5; --bad:#FF5C9A;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);background:var(--bg);}
+*,*::before,*::after{box-sizing:inherit;}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:1rem;line-height:1.55;-webkit-text-size-adjust:100%;}
+[hidden]{display:none !important;}
+main{max-width:920px;margin:0 auto;padding:28px 18px 64px;}
+h1,h2,h3{font-family:var(--font-display);line-height:1.1;margin:0;letter-spacing:-0.02em;}
+h1{font-size:clamp(2.1rem,6vw,3.5rem);font-weight:800;letter-spacing:-0.035em;}
+h2{font-size:clamp(1.5rem,4vw,2.2rem);font-weight:800;}
+h3{font-size:1.15rem;font-weight:700;}
+p{margin:0;}
+a{color:var(--focus);text-underline-offset:3px;}
+:focus-visible{outline:3px solid var(--focus);outline-offset:3px;border-radius:6px;}
+
+.top{display:flex;flex-direction:column;gap:10px;margin-bottom:26px;}
+.lede{color:var(--muted);max-width:56ch;font-size:1.05rem;}
+.tabs{display:flex;gap:6px;margin-top:10px;border-bottom:2px solid var(--line);}
+.tab{font:inherit;font-weight:600;background:none;border:0;color:var(--muted);padding:10px 14px;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink);}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;}
+.stack{display:flex;flex-direction:column;gap:16px;}
+.intro .big{font-family:var(--font-display);font-size:1.45rem;font-weight:700;line-height:1.25;max-width:32ch;letter-spacing:-0.015em;}
+.intro p{max-width:60ch;}
+.check{display:flex;align-items:center;gap:10px;cursor:pointer;}
+.check input{width:20px;height:20px;accent-color:var(--ink);}
+
+.btn{font:inherit;font-weight:600;border-radius:10px;border:2px solid var(--ink);background:transparent;color:var(--ink);padding:12px 20px;cursor:pointer;min-height:48px;}
+.btn.primary{background:var(--ink);color:var(--bg);}
+.btn.small{padding:6px 12px;min-height:36px;font-size:.9rem;border-width:1.5px;}
+.btn.danger{border-color:var(--fake);color:var(--fake);}
+.btn:hover{filter:brightness(1.08);}
+.btn[disabled]{opacity:.5;cursor:not-allowed;}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+
+.meta{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:12px;font-weight:600;}
+.ticks{list-style:none;display:flex;gap:4px;margin:0;padding:0;flex:1;max-width:420px;}
+.ticks li{flex:1;height:8px;border-radius:2px;background:var(--line);}
+.ticks li.done{background:var(--ink);}
+.ticks li.current{background:var(--focus);}
+.stage{background:#000;border-radius:14px;overflow:hidden;border:1px solid var(--line);}
+.ratio{position:relative;width:100%;aspect-ratio:16/9;}
+.ratio iframe{position:absolute;inset:0;width:100%;height:100%;border:0;}
+.shield{position:absolute;left:0;right:0;top:0;height:min(64px,13%);background:#000;pointer-events:none;}
+.alt{margin-top:10px;font-size:.92rem;color:var(--muted);}
+
+.prompt{font-family:var(--font-display);font-weight:700;font-size:1.25rem;margin:22px 0 12px;}
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.choice{font:inherit;font-family:var(--font-display);font-weight:800;font-size:1.35rem;letter-spacing:-0.01em;padding:22px 16px;border-radius:12px;cursor:pointer;color:var(--ink);border:3px solid;text-align:center;}
+.choice.real{background:var(--real-bg);border-color:var(--real);}
+.choice.fake{background:var(--fake-bg);border-color:var(--fake);}
+.choice:hover{transform:translateY(-2px);}
+.choice:active{transform:translateY(0);}
+
+.reveal{margin-top:22px;display:flex;flex-direction:column;gap:14px;}
+.reveal h2{font-size:clamp(1.8rem,5.2vw,3rem);}
+.reveal h2:focus{outline:none;}
+.verdict-word.fake{color:var(--fake);text-shadow:.045em 0 var(--cyan),-.045em 0 var(--fake);}
+.verdict-word.real{color:var(--real);}
+.verdict-word.fake.jolt{animation:jolt .55s steps(2,end) 1;}
+@keyframes jolt{0%{transform:translateX(-5px) skewX(-4deg);}25%{transform:translateX(6px);}50%{transform:translateX(-3px) skewX(3deg);}75%{transform:translateX(2px);}100%{transform:none;}}
+.chip{display:inline-block;font-weight:600;font-size:.95rem;padding:3px 12px;border-radius:999px;border:2px solid;vertical-align:middle;}
+.chip.ok{color:var(--ok);border-color:var(--ok);}
+.chip.bad{color:var(--bad);border-color:var(--bad);}
+.reveal .why{max-width:68ch;}
+.clues{margin:0;padding-left:1.2em;max-width:68ch;}
+.clues li{margin:4px 0;}
+.source{font-size:.92rem;color:var(--muted);}
+
+.score{font-family:var(--font-display);font-size:clamp(1.8rem,5vw,2.8rem);font-weight:800;letter-spacing:-0.03em;line-height:1.1;}
+.review{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;}
+.review li{display:grid;grid-template-columns:28px 1fr auto;gap:12px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);}
+.mark{font-weight:800;font-size:1.2rem;}
+.mark.ok{color:var(--ok);} .mark.bad{color:var(--bad);}
+.review .t{font-weight:600;}
+.review .s{color:var(--muted);font-size:.9rem;}
+.tag{font-weight:700;font-size:.9rem;}
+.tag.fake{color:var(--fake);} .tag.real{color:var(--real);}
+
+.opt{font:inherit;text-align:left;padding:14px 16px;border-radius:10px;border:2px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer;}
+.opt:hover:not([disabled]){border-color:var(--ink);}
+.opt.good{border-color:var(--real);background:var(--real-bg);}
+.opt.bad{border-color:var(--fake);background:var(--fake-bg);}
+.opt[disabled]{cursor:default;}
+/* editor */
+label.f{display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:.95rem;}
+label.f small{font-weight:400;color:var(--muted);}
+input[type=text],input[type=number],textarea{font:inherit;color:var(--ink);background:var(--bg);border:1.5px solid var(--line);border-radius:8px;padding:10px 12px;width:100%;}
+textarea{min-height:84px;resize:vertical;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.radios{display:flex;gap:18px;flex-wrap:wrap;}
+.radios label{display:flex;align-items:center;gap:8px;font-weight:500;cursor:pointer;}
+.radios input{width:18px;height:18px;accent-color:var(--ink);}
+.err{color:var(--bad);font-weight:600;}
+.cliplist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;}
+.cliplist li{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);}
+.cliplist .t{font-weight:600;}
+.cliplist .s{color:var(--muted);font-size:.88rem;word-break:break-all;}
+.cliplist .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;}
+details{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--bg);}
+details summary{cursor:pointer;font-weight:600;}
+details ul{margin:10px 0 0;padding-left:1.2em;}
+details li{margin:6px 0;}
+.empty{text-align:left;}
+.empty p{max-width:56ch;}
+
+@media (max-width:620px){
+  .choices{grid-template-columns:1fr;}
+  .grid2{grid-template-columns:1fr;}
+  .cliplist li{grid-template-columns:1fr;}
+  .cliplist .acts{justify-content:flex-start;}
+  .meta{flex-direction:column;align-items:flex-start;}
+  .ticks{width:100%;max-width:none;}
+}
+@media (prefers-reduced-motion:reduce){
+  .verdict-word.fake.jolt{animation:none;}
+  .choice:hover{transform:none;}
+}
+</style>
+</head>
+<body>
+<main>
+  <header class="top">
+    <h1>¿Real o deepfake?</h1>
+    <p class="lede">Entrénate para detectar deepfakes, incluidos los que ocurren en directo en una videollamada.</p>
+  </header>
+  <section id="view-play"></section>
+</main>
+
+<script>
+(function(){
+  "use strict";
+  var KEY = "real-o-deepfake-clips-v1";
+
+  // Clips integrados en la página (para que los vean todas las personas del curso).
+  // Formato: { id:"ID_YOUTUBE_11_CARACTERES", start:0, end:0, answer:"real"|"fake",
+  //            title:"", explanation:"", clues:["",""], source:"" }
+  var BUILTIN = [];
+
+  function $(s){ return document.querySelector(s); }
+  function esc(s){ return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+
+  function parseTime(t){
+    t = String(t || "").trim();
+    if (!t) return null;
+    if (/^\d+$/.test(t)) return parseInt(t, 10);
+    if (t.indexOf(":") > -1) return t.split(":").map(Number).reduce(function(a, b){ return a * 60 + (b || 0); }, 0);
+    var m = t.match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?$/);
+    if (!m) return null;
+    return (+m[1] || 0) * 3600 + (+m[2] || 0) * 60 + (+m[3] || 0);
+  }
+  function parseYT(input){
+    try {
+      var s = String(input || "").trim();
+      if (!s) return null;
+      var u;
+      try { u = new URL(s); } catch (e) { u = new URL("https://" + s); }
+      var h = u.hostname.replace(/^www\./, "").replace(/^m\./, "");
+      var id = null;
+      if (h === "youtu.be") id = u.pathname.slice(1).split("/")[0];
+      else if (h.slice(-11) === "youtube.com" || h.slice(-20) === "youtube-nocookie.com") {
+        if (u.pathname === "/watch") id = u.searchParams.get("v");
+        else { var m = u.pathname.match(/^\/(embed|shorts|live|v)\/([\w-]{11})/); if (m) id = m[2]; }
+      }
+      if (id && /^[\w-]{11}$/.test(id)) return { id: id, t: parseTime(u.searchParams.get("t") || u.searchParams.get("start")) };
+    } catch (e) {}
+    return null;
+  }
+  function num(v){ v = parseInt(v, 10); return isFinite(v) && v > 0 ? v : 0; }
+  function norm(o){
+    if (!o || typeof o !== "object") return null;
+    var id = o.id, start = o.start, end = o.end;
+    if (!id && o.url) { var p = parseYT(o.url); if (p) { id = p.id; if ((start == null || start === "") && p.t != null) start = p.t; } }
+    var src = typeof o.src === "string" && /^(\/_blob\/|https:\/\/)[\w\-.\/%?=&:]+$/.test(o.src) ? o.src : "";
+    if (!src && (!id || !/^[\w-]{11}$/.test(id))) return null;
+    var answer = o.answer === "fake" ? "fake" : (o.answer === "real" ? "real" : null);
+    if (!answer) return null;
+    return {
+      id: src ? "" : id, src: src, start: num(start), end: num(end), answer: answer,
+      title: String(o.title || "").slice(0, 120),
+      explanation: String(o.explanation || "").slice(0, 1200),
+      clues: Array.isArray(o.clues) ? o.clues.map(function(x){ return String(x).slice(0, 200); }).filter(Boolean).slice(0, 10) : [],
+      source: String(o.source || "").slice(0, 300)
+    };
+  }
+  function embedUrl(c){
+    var p = new URLSearchParams({ rel: "0", modestbranding: "1", playsinline: "1" });
+    if (c.start) p.set("start", c.start);
+    if (c.end) p.set("end", c.end);
+    return "https://www.youtube-nocookie.com/embed/" + c.id + "?" + p.toString();
+  }
+  function watchUrl(c){ return "https://www.youtube.com/watch?v=" + c.id + (c.start ? "&t=" + c.start + "s" : ""); }
+
+  function load(){ return BUILTIN.map(norm).filter(Boolean); }
+
+  var DS = [
+    { src:"/_blob/34cabefac30cf62c393083b299d83fba", answer:"real",
+      title:"Grabación real de webcam (DeepSpeak v2)",
+      explanation:"Grabación auténtica de webcam: una persona real, en casa y con la cámara fija. No se ha alterado nada salvo la recodificación uniforme que se aplica a todos los clips de este ejercicio, para que ninguno pueda identificarse por su formato de archivo.",
+      clues:[
+        "La cara tiene la misma nitidez y calidad que el resto de la imagen, sin diferencias entre rostro y fondo.",
+        "Gafas, pelo y mandíbula se mantienen estables mientras la persona habla y se mueve.",
+        "Ojo: que no veas fallos no demuestra que un vídeo sea real, igual que un fallo aislado no demuestra que sea falso."
+      ],
+      source:"https://huggingface.co/datasets/faridlab/deepspeak_v2" },
+    { src:"/_blob/f92141bc5bc88c7045bb74db20ded4de", answer:"real",
+      title:"Grabación real de webcam (DeepSpeak v2)",
+      explanation:"Grabación auténtica de webcam. No se ha alterado nada salvo la recodificación uniforme que se aplica a todos los clips de este ejercicio, para que ninguno pueda identificarse por su formato de archivo.",
+      clues:[
+        "Rostro, pelo y fondo comparten la misma nitidez y calidad de imagen.",
+        "Los gestos de la cara siguen de forma natural a lo que dice la persona.",
+        "Ojo: que no veas fallos no demuestra que un vídeo sea real."
+      ],
+      source:"https://huggingface.co/datasets/faridlab/deepspeak_v2" },
+    { src:"/_blob/4b00976b8b7d7df4c2b8c1279b42593a", answer:"fake",
+      title:"Cambio de cara · ataque: facefusion (DeepSpeak v2)",
+      explanation:"Cambio de cara (face swap). La cara de otra persona se ha colocado sobre la cabeza de quien estaba realmente delante de la cámara. La voz, el pelo, el cuerpo, la ropa y la habitación son de quien grababa: solo la cara es prestada. En una videollamada en directo, así es como un atacante se pone una cara en la que confías.",
+      clues:[
+        "Costuras de mezcla a lo largo de la mandíbula y la línea del pelo.",
+        "El tono de la piel de la cara no encaja del todo con el del cuello o las orejas.",
+        "Parpadeos o saltos de imagen cuando la cabeza gira."
+      ],
+      source:"https://huggingface.co/datasets/faridlab/deepspeak_v2" },
+    { src:"/_blob/b1bcdca9e118c689041e58b4bfae5e93", answer:"fake",
+      title:"Avatar · ataque: memo (DeepSpeak v2)",
+      explanation:"Avatar. Toda la cabeza se ha reanimado a partir de una imagen fija o de un vídeo guía, mientras que la voz es auténtica. Las palabras y quien las dice son reales; la cara que las pronuncia ha sido generada.",
+      clues:[
+        "La cabeza parece flotar o moverse de forma independiente de los hombros.",
+        "Faltan parpadeos o están desajustados en el tiempo.",
+        "La expresión se mantiene extrañamente plana."
+      ],
+      source:"https://huggingface.co/datasets/faridlab/deepspeak_v2" },
+    { src:"/_blob/47fc8ef2ca217c626417db2b22558f1d", answer:"fake",
+      title:"Sincronización de labios · ataque: diff2lip (DeepSpeak v2)",
+      explanation:"Sincronización labial. La voz es de verdad de esta persona y de verdad dijo estas palabras, pero en otra grabación. Su boca se ha regenerado fotograma a fotograma para que parezca que las dijo en este vídeo. La llamada que estás viendo nunca ocurrió.",
+      clues:[
+        "La boca se ve más blanda o borrosa que el resto de la cara.",
+        "Los dientes cambian de forma de un fotograma a otro.",
+        "Los labios no llegan a cerrarse del todo en los sonidos p y b."
+      ],
+      source:"https://huggingface.co/datasets/faridlab/deepspeak_v2" },
+    { src:"/_blob/fd4f5b278a65c337517435832e0359a0", answer:"real",
+      title:"Grabación real de webcam (DeepSpeak v2)",
+      explanation:"Grabación auténtica de webcam. No se ha alterado nada salvo la recodificación uniforme que se aplica a todos los clips de este ejercicio, para que ninguno pueda identificarse por su formato de archivo.",
+      clues:["Rostro, pelo y fondo comparten la misma nitidez y calidad de imagen.","La boca se ve tan nítida como el resto de la cara y los labios cierran en los sonidos p y b.","Ojo: que no veas fallos no demuestra que un vídeo sea real."],
+      source:"https://huggingface.co/datasets/faridlab/deepspeak_v2" },
+    { src:"/_blob/c89fef955328f6567f3d2eda7b46d778", answer:"real",
+      title:"Grabación real de webcam (DeepSpeak v2)",
+      explanation:"Grabación auténtica de webcam. No se ha alterado nada salvo la recodificación uniforme que se aplica a todos los clips de este ejercicio, para que ninguno pueda identificarse por su formato de archivo.",
+      clues:["El pelo largo y la barba se mueven de forma natural con la cabeza, sin costuras ni parpadeos en el contorno.","El tono de la piel de la cara coincide con el del cuello.","Ojo: que no veas fallos no demuestra que un vídeo sea real."],
+      source:"https://huggingface.co/datasets/faridlab/deepspeak_v2" },
+    { src:"/_blob/3f5f7072efd934014f3ec41dd19270a2", answer:"real",
+      title:"Grabación real de webcam (DeepSpeak v2)",
+      explanation:"Grabación auténtica de webcam. No se ha alterado nada salvo la recodificación uniforme que se aplica a todos los clips de este ejercicio, para que ninguno pueda identificarse por su formato de archivo.",
+      clues:["La cabeza se mueve de forma coherente con los hombros y el cuerpo.","Los parpadeos y la expresión varían de forma natural mientras habla.","Ojo: que no veas fallos no demuestra que un vídeo sea real."],
+      source:"https://huggingface.co/datasets/faridlab/deepspeak_v2" },
+    { src:"/_blob/0fd2327815f938e1ac6861288f67fdd7", answer:"fake",
+      title:"Cambio de cara · ataque: facefusion (DeepSpeak v2)",
+      explanation:"Cambio de cara (face swap). La cara de otra persona se ha colocado sobre la cabeza de quien estaba realmente delante de la cámara. La voz, el pelo, el cuerpo, la ropa y la habitación son de quien grababa: solo la cara es prestada. En una videollamada en directo, así es como un atacante se pone una cara en la que confías.",
+      clues:["Costuras de mezcla a lo largo de la mandíbula y la línea del pelo.","El tono de la piel de la cara no encaja del todo con el del cuello o las orejas.","Parpadeos o saltos de imagen cuando la cabeza gira."],
+      source:"https://huggingface.co/datasets/faridlab/deepspeak_v2" },
+    { src:"/_blob/45233acfb74abdb0adc855c558ef2ab2", answer:"fake",
+      title:"Sincronización de labios · ataque: latentsync (DeepSpeak v2)",
+      explanation:"Sincronización labial. La voz es de verdad de esta persona y de verdad dijo estas palabras, pero en otra grabación. Su boca se ha regenerado fotograma a fotograma para que parezca que las dijo en este vídeo. La llamada que estás viendo nunca ocurrió.",
+      clues:["La boca se ve más blanda o borrosa que el resto de la cara.","Los dientes cambian de forma de un fotograma a otro.","Los labios no llegan a cerrarse del todo en los sonidos p y b."],
+      source:"https://huggingface.co/datasets/faridlab/deepspeak_v2" },
+    { src:"/_blob/40ab43571d48b4b41c2cb6c8f6dd3e0a", answer:"fake",
+      title:"Sincronización de labios · ataque: diff2lip (DeepSpeak v2)",
+      explanation:"Sincronización labial. La voz es de verdad de esta persona y de verdad dijo estas palabras, pero en otra grabación. Su boca se ha regenerado fotograma a fotograma para que parezca que las dijo en este vídeo. La llamada que estás viendo nunca ocurrió.",
+      clues:["La boca se ve más blanda o borrosa que el resto de la cara.","Los dientes cambian de forma de un fotograma a otro.","Los labios no llegan a cerrarse del todo en los sonidos p y b."],
+      source:"https://huggingface.co/datasets/faridlab/deepspeak_v2" },
+    { src:"/_blob/3fa847ad82640b751ce40a7b5a7c85bd", answer:"real",
+      title:"Grabación real de webcam (DeepSpeak v2)",
+      explanation:"Grabación auténtica de webcam. No se ha alterado nada salvo la recodificación uniforme que se aplica a todos los clips de este ejercicio, para que ninguno pueda identificarse por su formato de archivo.",
+      clues:["Gafas, pelo y mandíbula se mantienen estables mientras la persona habla.","La boca se ve tan nítida como el resto de la cara.","Ojo: que no veas fallos no demuestra que un vídeo sea real."],
+      source:"https://huggingface.co/datasets/faridlab/deepspeak_v2" }
+  ];
+  BUILTIN = DS;
+  var clips = load();
+  var S = { phase: "intro", order: [], i: 0, res: [], shuffle: true };
+
+  /* ---------- Jugar ---------- */
+  function shuffleArr(a){ a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+
+  function renderPlay(){
+    var v = $("#view-play");
+    if (!clips.length) {
+      v.innerHTML = '<div class="panel stack empty"><h2>No hay clips disponibles</h2></div>';
+      return;
+    }
+    if (S.phase === "intro") return renderIntro(v);
+    if (S.phase === "end") return renderEnd(v);
+    renderClip(v);
+  }
+
+  function renderIntro(v){
+    v.innerHTML =
+      '<div class="panel stack intro">' +
+        '<p class="big">Vas a ver ' + clips.length + (clips.length === 1 ? ' clip.' : ' clips.') + ' Algunos son reales y otros están manipulados con IA.</p>' +
+        '<p>Para cada uno, decide qué crees que es. Al responder verás la solución y las pistas que permitían detectarlo.</p>' +
+        '<label class="check"><input type="checkbox" id="shuf"' + (S.shuffle ? " checked" : "") + '> Mezclar el orden de los clips</label>' +
+        '<div class="row"><button class="btn primary" id="start">Empezar</button></div>' +
+      '</div>';
+    $("#start").addEventListener("click", function(){
+      S.shuffle = $("#shuf").checked;
+      var idx = clips.map(function(_, k){ return k; });
+      var ord = idx;
+      if (S.shuffle) {
+        for (var t = 0; t < 300; t++) {
+          ord = shuffleArr(idx);
+          var ok = true;
+          for (var q = 2; q < ord.length; q++) {
+            var a0 = clips[ord[q]].answer;
+            if (a0 === clips[ord[q - 1]].answer && a0 === clips[ord[q - 2]].answer) { ok = false; break; }
+          }
+          if (ok) break;
+        }
+      }
+      S.order = ord;
+      S.i = 0; S.res = []; S.phase = "ask";
+      renderPlay();
+    });
+  }
+
+  function ticksHTML(){
+    var h = "";
+    for (var k = 0; k < S.order.length; k++) {
+      h += '<li class="' + (k < S.res.length ? "done" : (k === S.i ? "current" : "")) + '"></li>';
+    }
+    return h;
+  }
+
+  function renderClip(v){
+    var c = clips[S.order[S.i]];
+    v.innerHTML =
+      '<div class="meta"><span>Clip ' + (S.i + 1) + ' de ' + S.order.length + '</span><ol class="ticks" id="ticks" aria-hidden="true">' + ticksHTML() + '</ol></div>' +
+      '<div class="stage"><div class="ratio"><iframe src="' + esc(embedUrl(c)) + '" title="Clip ' + (S.i + 1) + '" allow="accelerometer; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe><div class="shield" aria-hidden="true"></div></div></div>' +
+      '<p class="alt">¿No se reproduce aquí? <a href="' + esc(watchUrl(c)) + '" target="_blank" rel="noopener noreferrer">Ábrelo en YouTube</a>.</p>' +
+      '<div id="verdict"></div>';
+    if (c.src) {
+      var rt = v.querySelector(".ratio"), vid = document.createElement("video");
+      vid.src = c.src; vid.controls = true; vid.playsInline = true; vid.preload = "metadata";
+      vid.setAttribute("style", "position:absolute;inset:0;width:100%;height:100%;background:#000");
+      rt.innerHTML = ""; rt.appendChild(vid);
+      var al = v.querySelector(".alt"); if (al) al.hidden = true;
+    }
+    renderAsk(c);
+  }
+
+  function renderAsk(c){
+    $("#verdict").innerHTML =
+      '<p class="prompt">¿Qué crees que es?</p>' +
+      '<div class="choices">' +
+        '<button class="choice real" data-a="real">Es real</button>' +
+        '<button class="choice fake" data-a="fake">Es un deepfake</button>' +
+      '</div>';
+    var btns = document.querySelectorAll(".choice");
+    for (var k = 0; k < btns.length; k++) btns[k].addEventListener("click", function(e){ answer(c, e.currentTarget.getAttribute("data-a")); });
+  }
+
+  function answer(c, given){
+    var ok = given === c.answer;
+    S.res.push({ ci: S.order[S.i], given: given, ok: ok });
+    $("#ticks").innerHTML = ticksHTML();
+    var isFake = c.answer === "fake";
+    var last = S.i === S.order.length - 1;
+    var h = '<div class="reveal" role="status">' +
+      '<h2 id="rv-h" tabindex="-1">Era <span class="verdict-word ' + c.answer + (isFake ? " jolt" : "") + '">' + (isFake ? "un deepfake" : "real") + '</span>. <span class="chip ' + (ok ? "ok" : "bad") + '">' + (ok ? "Acertaste" : "Fallaste") + '</span></h2>';
+    if (c.title) h += '<h3>' + esc(c.title) + '</h3>';
+    if (c.explanation) h += '<p class="why">' + esc(c.explanation) + '</p>';
+    if (c.clues.length) {
+      h += '<div><h3 style="margin-bottom:6px">Pistas para detectarlo</h3><ul class="clues">';
+      c.clues.forEach(function(x){ h += '<li>' + esc(x) + '</li>'; });
+      h += '</ul></div>';
+    }
+    if (c.source) {
+      h += '<p class="source">Fuente: ' + (/^https?:\/\//i.test(c.source) ? '<a href="' + esc(c.source) + '" target="_blank" rel="noopener noreferrer">' + esc(c.source) + '</a>' : esc(c.source)) + '</p>';
+    }
+    h += '<div class="row"><button class="btn primary" id="next">' + (last ? "Ver resultados" : "Siguiente clip") + '</button></div></div>';
+    $("#verdict").innerHTML = h;
+    var rv = $("#rv-h"); if (rv) rv.focus({ preventScroll: true });
+    $("#verdict").scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "nearest" });
+    $("#next").addEventListener("click", function(){
+      if (last) { S.phase = "end"; } else { S.i++; }
+      renderPlay();
+      window.scrollTo(0, 0);
+    });
+  }
+
+  function renderEnd(v){
+    var total = S.res.length, good = S.res.filter(function(r){ return r.ok; }).length;
+    var pct = total ? good / total : 0;
+    var msg = pct === 1 ? "Ni un fallo. Aun así, recuerda que los deepfakes mejoran cada mes."
+      : pct >= 0.7 ? "Buen ojo. Repasa las pistas de los clips que fallaste."
+      : pct >= 0.4 ? "Más o menos como tirar una moneda. Eso demuestra lo difícil que es detectarlos solo mirando."
+      : "Los deepfakes engañan a casi todo el mundo. Repasa las pistas de abajo.";
+    var h = '<div class="panel stack"><p class="score">Acertaste ' + good + ' de ' + total + '.</p><p>' + esc(msg) + '</p><ul class="review">';
+    S.res.forEach(function(r, n){
+      var c = clips[r.ci];
+      h += '<li><span class="mark ' + (r.ok ? "ok" : "bad") + '" aria-label="' + (r.ok ? "Acierto" : "Fallo") + '">' + (r.ok ? "✓" : "✗") + '</span>' +
+        '<span><span class="t">' + esc(c.title || ("Clip " + (n + 1))) + '</span><br><span class="s">Respondiste: ' + (r.given === "fake" ? "deepfake" : "real") + '</span></span>' +
+        '<span class="tag ' + c.answer + '">' + (c.answer === "fake" ? "Deepfake" : "Real") + '</span></li>';
+    });
+    h += '</ul>';
+    var seen = {}, clues = [];
+    S.res.forEach(function(r){ if (!r.ok) clues.concat(clips[r.ci].clues).forEach(function(x){ if (!seen[x]) { seen[x] = 1; clues.push(x); } }); });
+    if (clues.length) {
+      h += '<div><h3 style="margin-bottom:6px">Pistas para repasar</h3><ul class="clues">';
+      clues.forEach(function(x){ h += '<li>' + esc(x) + '</li>'; });
+      h += '</ul></div>';
+    }
+    h += '<div class="row"><button class="btn primary" id="again">Jugar otra vez</button></div></div>';
+    v.innerHTML = h;
+    $("#again").addEventListener("click", function(){ S.phase = "intro"; renderPlay(); window.scrollTo(0, 0); });
+  }
+
+  renderPlay();
+})();
+</script>
+</body>
+</html>
